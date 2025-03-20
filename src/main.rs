@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 
     let mut requests = vec![];
     for (idx, url) in urls.into_iter().enumerate() {
-        let dest_path = format!("{}/{}.jpeg", dest_dir, idx + 1);
+        let dest_path = format!("{}/unsplash-{}.jpeg", dest_dir, idx + 1);
         let request = download::download_one(url, dest_path);
         requests.push(request);
     }
