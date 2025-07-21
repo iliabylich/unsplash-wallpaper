@@ -24,7 +24,9 @@ impl Download {
             .await
             .with_context(|| format!("failed to write downloaded image to {:?}", self.dest))?;
 
-        log::info!("{:?}", self.dest);
+        if let Some(s) = self.dest.to_str() {
+            println!("{s}");
+        }
 
         Ok(())
     }
