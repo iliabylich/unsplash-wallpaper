@@ -1,5 +1,6 @@
 use crate::unsplash::Params;
 use anyhow::{Context as _, Result};
+use serde::Deserialize;
 
 pub(crate) struct Client;
 
@@ -13,13 +14,13 @@ impl Client {
             .get(Self::URL)
             .header("Authorization", format!("Client-ID {token}"))
             .query(&[
-                ("collections", params.collections.clone()),
-                ("count", format!("{}", params.count)),
+                ("collections", &params.collections),
+                ("count", &params.count.to_string()),
             ])
             .send()
             .await
             .context("failed to send API request")?
-            .json::<response::Response>()
+            .json::<Vec<Image>>()
             .await
             .context("unexpected response from Unsplash API")?;
 
@@ -32,18 +33,12 @@ impl Client {
     }
 }
 
-mod response {
-    use serde::Deserialize;
+#[derive(Deserialize)]
+struct Image {
+    urls: Urls,
+}
 
-    pub(crate) type Response = Vec<Image>;
-
-    #[derive(Deserialize)]
-    pub(crate) struct Image {
-        pub(crate) urls: Urls,
-    }
-
-    #[derive(Deserialize)]
-    pub(crate) struct Urls {
-        pub(crate) raw: String,
-    }
+#[derive(Deserialize)]
+struct Urls {
+    raw: String,
 }

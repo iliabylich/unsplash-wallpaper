@@ -1,18 +1,41 @@
 use anyhow::{Context as _, Result};
+use futures::future::JoinAll;
+use std::path::PathBuf;
 
-pub(crate) async fn download_one(url: String, dest_path: String) -> Result<()> {
-    let image = reqwest::get(url)
-        .await
-        .context("failed to request image")?
-        .bytes()
-        .await
-        .context("failed to read image from response")?;
+pub(crate) struct Download {
+    url: String,
+    dest: PathBuf,
+}
 
-    tokio::fs::write(&dest_path, image)
-        .await
-        .with_context(|| format!("failed to write downloaded image to {dest_path}"))?;
+impl Download {
+    pub(crate) fn new(url: String, dest: PathBuf) -> Self {
+        Self { url, dest }
+    }
 
-    println!("{dest_path}");
+    async fn try_perform(self) -> Result<()> {
+        let image = reqwest::get(&self.url)
+            .await
+            .context("failed to request image")?
+            .bytes()
+            .await
+            .context("failed to read image from response")?;
 
-    Ok(())
+        tokio::fs::write(&self.dest, image)
+            .await
+            .with_context(|| format!("failed to write downloaded image to {:?}", self.dest))?;
+
+        log::info!("{:?}", self.dest);
+
+        Ok(())
+    }
+
+    async fn perform(self) {
+        if let Err(err) = self.try_perform().await {
+            log::error!("{err:?}");
+        }
+    }
+
+    pub(crate) async fn perform_many(downloads: impl Iterator<Item = Download>) {
+        downloads.map(|d| d.perform()).collect::<JoinAll<_>>().await;
+    }
 }
